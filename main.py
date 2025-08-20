@@ -112,9 +112,7 @@ class SuperKamenBot:
                 st.error("音声を認識できませんでした。もう一度お試しください。")
                 return
             
-            st.success(f"認識されたテキスト: {user_text}")
-            
-            # Generate response using the text processing method
+            # No green message - directly process the text input
             self.process_text_input(user_text)
                 
         except Exception as e:
@@ -158,6 +156,9 @@ class SuperKamenBot:
                         success = st.session_state.tts.text_to_speech_play(bot_response)
                         if not success:
                             st.warning("音声再生に失敗しました。")
+                
+                # Rerun to show updated conversation
+                st.rerun()
                 
         except Exception as e:
             st.error(f"テキスト処理エラー: {e}")
@@ -203,13 +204,12 @@ def main():
         color: white;
         padding: 0.8rem 1.2rem;
         border-radius: 18px 18px 5px 18px;
-        margin: 0.3rem 0 0.3rem auto;
+        margin: 0.5rem 0 0.5rem auto;
         max-width: 75%;
         word-wrap: break-word;
         text-align: left;
         display: block;
-        float: right;
-        clear: both;
+        margin-left: 25%;
     }
     
     /* Bot messages - left aligned like you receive */
@@ -218,19 +218,11 @@ def main():
         color: #333;
         padding: 0.8rem 1.2rem;
         border-radius: 18px 18px 18px 5px;
-        margin: 0.3rem auto 0.3rem 0;
+        margin: 0.5rem 25% 0.5rem 0;
         max-width: 75%;
         word-wrap: break-word;
         border: 1px solid #dee2e6;
         display: block;
-        float: left;
-        clear: both;
-    }
-    
-    .clearfix::after {
-        content: "";
-        display: table;
-        clear: both;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -282,7 +274,31 @@ def main():
                 st.success(f"セッション '{title}' を読み込みました")
                 st.rerun()
     
-    # Main content area - single column clean layout
+    # Main content area - clean and minimal
+    
+    # Only show chat history if there are conversations (no empty containers)
+    if st.session_state.conversation_history:
+        # Chat history - Instagram/Skype style
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        
+        # Show messages in chronological order (oldest to newest like real chat)
+        for exchange in st.session_state.conversation_history[-10:]:  # Last 10 messages
+            # User message (right side like you send)
+            st.markdown(f"""
+            <div class="user-message">
+                {exchange['user']}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Bot message (left side like you receive)
+            st.markdown(f"""
+            <div class="bot-message">
+                {exchange['bot']}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("---")
     
     # Voice input (prominent)
     if st.session_state.stt and st.session_state.stt.available:
@@ -293,59 +309,32 @@ def main():
     else:
         st.info("💡 音声入力は利用できません。")
     
-    # Text input toggle (small button)
-    col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 2])
-    with col3:
-        if st.button("💬", help="テキスト入力を表示/非表示"):
+    # Text input toggle (centered button)
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("💬", help="テキスト入力を表示/非表示", use_container_width=True, key="text_toggle"):
             st.session_state.show_text_input = not st.session_state.show_text_input
     
-    # Text input (hidden by default)
+    # Text input (at bottom like WhatsApp/Discord)
     if st.session_state.show_text_input:
         with st.form("text_form", clear_on_submit=True):
-            user_input = st.text_input("", placeholder="日本語でメッセージを入力してください...")
-            col1, col2, col3 = st.columns([1, 1, 1])
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                user_input = st.text_input("メッセージ", placeholder="メッセージを入力してください...", label_visibility="collapsed")
             with col2:
-                if st.form_submit_button("送信", use_container_width=True):
-                    if user_input:
-                        bot.process_text_input(user_input)
-                        st.rerun()
-    
-    # Chat history - Instagram/Skype style
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    
-    if st.session_state.conversation_history:
-        # Show messages in chronological order (oldest to newest like real chat)
-        for exchange in st.session_state.conversation_history[-10:]:  # Last 10 messages
-            # User message (right side like you send)
-            st.markdown(f"""
-            <div class="user-message">
-                {exchange['user']}
-            </div>
-            <div class="clearfix"></div>
-            """, unsafe_allow_html=True)
+                send_clicked = st.form_submit_button("送信", use_container_width=True, type="primary")
             
-            # Bot message (left side like you receive)
-            st.markdown(f"""
-            <div class="bot-message">
-                {exchange['bot']}
-            </div>
-            <div class="clearfix"></div>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="text-align: center; color: #888; padding: 2rem;">
-            <p>🎯 音声ボタンを押して会話を始めましょう！</p>
-        </div>
-        """, unsafe_allow_html=True)
+            if send_clicked and user_input:
+                bot.process_text_input(user_input)
+                st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Footer
-    st.markdown("---")
-    st.markdown(
-        '<p style="text-align: center; color: #888;">Super Kamen Bot - 日本語会話AI © 2025</p>',
-        unsafe_allow_html=True
-    )
+    # Footer (only show if there are conversations)
+    if st.session_state.conversation_history:
+        st.markdown("---")
+        st.markdown(
+            '<p style="text-align: center; color: #888;">Super Kamen Bot - 日本語会話AI © 2025</p>',
+            unsafe_allow_html=True
+        )
 
 if __name__ == "__main__":
     main()
