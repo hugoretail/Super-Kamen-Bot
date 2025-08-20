@@ -1,0 +1,45 @@
+# Core dependencies
+ollama>=0.1.0
+openai-whisper>=20231117
+sounddevice>=0.4.6
+soundfile>=0.12.1
+TTS>=0.22.0
+
+# Audio processing
+numpy>=1.24.0
+librosa>=0.10.0
+scipy>=1.10.0
+pyaudio>=0.2.11
+
+# Database and data handling
+sqlite3  # Built-in with Python
+pandas>=2.0.0
+
+# ML/AI utilities
+torch>=2.0.0
+transformers>=4.30.0
+sentence-transformers>=2.2.0
+
+# Web framework (for future web interface if needed)
+streamlit>=1.28.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+requests>=2.31.0
+typing-extensions>=4.7.0
+
+# Development tools
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Optional: For advanced audio processing
+webrtcvad>=2.0.10
+pydub>=0.25.1
+
+# Optional: For embeddings and vector search (advanced memory)
+chromadb>=0.4.0
+faiss-cpu>=1.7.4
