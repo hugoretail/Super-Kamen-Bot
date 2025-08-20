@@ -53,17 +53,50 @@ class LLMHandler:
                 messages=messages,
                 options={
                     'temperature': Config.LLM_TEMPERATURE,
-                    'num_predict': Config.LLM_MAX_TOKENS
+                    'num_predict': Config.LLM_MAX_TOKENS,
+                    'stop': ['<|endoftext|>', '\n\n\n'],  # Add stop sequences
+                    'top_p': 0.9,  # Limit token diversity
+                    'repeat_penalty': 1.1  # Reduce repetition
                 }
             )
             
             generated_text = response['message']['content'].strip()
+            
+            # Clean up the response - remove any garbled text
+            generated_text = self._clean_response(generated_text)
+            
             print(f"Generated response: {generated_text}")
             return generated_text
             
         except Exception as e:
             print(f"Error generating response: {e}")
             return "申し訳ございませんが、エラーが発生しました。もう一度お試しください。"
+    
+    def _clean_response(self, text: str) -> str:
+        """
+        Clean up the generated response to remove garbled text
+        
+        Args:
+            text: Raw response text
+            
+        Returns:
+            Cleaned response text
+        """
+        import re
+        
+        # Remove sequences of numbers/random characters
+        text = re.sub(r'\b\d{5,}\b', '', text)  # Remove long number sequences
+        text = re.sub(r'[a-zA-Z]{10,}', '', text)  # Remove long English sequences
+        text = re.sub(r'[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\s。、！？「」（）]', '', text)  # Keep only Japanese chars and basic punctuation
+        
+        # Remove multiple spaces and clean up
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        # If the text is too corrupted, return a fallback
+        if len(text) < 10 or not any('\u3040' <= c <= '\u309F' or '\u30A0' <= c <= '\u30FF' or '\u4E00' <= c <= '\u9FAF' for c in text):
+            return "申し訳ございませんが、適切な回答を生成できませんでした。もう一度お試しください。"
+        
+        return text
     
     def check_model_availability(self) -> bool:
         """

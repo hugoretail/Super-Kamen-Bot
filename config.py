@@ -18,8 +18,8 @@ class Config:
     
     # Ollama LLM settings
     LLM_MODEL = "kangyufei/llama2:japanese"  # Japanese-optimized model
-    LLM_TEMPERATURE = 0.7
-    LLM_MAX_TOKENS = 512
+    LLM_TEMPERATURE = 0.3  # Lower temperature for more consistent output
+    LLM_MAX_TOKENS = 256   # Reduced for more focused responses
     
     # TTS settings
     TTS_MODEL = "tts_models/ja/kokoro/tacotron2-DDC"  # Japanese TTS model
@@ -37,9 +37,15 @@ class Config:
     
     # Japanese conversation prompts
     SYSTEM_PROMPT = """あなたは親切で知識豊富な日本語のアシスタントです。
-常に自然で丁寧な日本語で回答してください。
-日本の文化、習慣、言語について詳しく説明できます。
-ユーザーとの会話を楽しく、教育的にしてください。"""
+以下のルールに従って回答してください：
+1. 常に正しい日本語のみで回答する
+2. 英語や数字の羅列は使わない
+3. 簡潔で自然な会話を心がける
+4. 丁寧語を使用する
+5. ユーザーの質問に直接答える
+6. 文字化けや意味不明な文字は絶対に出力しない
+
+日本の文化、習慣、言語について質問された場合は、正確で分かりやすい情報を提供してください。"""
     
     @classmethod
     def get_ollama_config(cls) -> Dict[str, Any]:
