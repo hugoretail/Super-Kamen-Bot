@@ -63,7 +63,8 @@ class MemoryManager:
         session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         if not title:
-            title = f"会話 {datetime.now().strftime('%Y年%m月%d日 %H:%M')}"
+            # Use English for better Windows compatibility
+            title = f"Conversation {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         
         try:
             with sqlite3.connect(self.db_path) as conn:

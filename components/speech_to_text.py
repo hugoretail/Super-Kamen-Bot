@@ -43,9 +43,10 @@ class SpeechToText:
             
         try:
             print("Loading Whisper model...")
-            self.model = whisper.load_model(Config.WHISPER_MODEL)
+            # Force CPU usage to avoid GPU issues
+            self.model = whisper.load_model(Config.WHISPER_MODEL, device="cpu")
             self.available = True
-            print(f"Whisper model '{Config.WHISPER_MODEL}' loaded successfully")
+            print(f"Whisper model '{Config.WHISPER_MODEL}' loaded successfully on CPU")
         except Exception as e:
             print(f"❌ Failed to load Whisper model: {e}")
     
@@ -88,24 +89,54 @@ class SpeechToText:
         Returns:
             Transcribed Japanese text or None if error
         """
+        if not self.available or not AUDIO_AVAILABLE:
+            print("❌ Speech-to-text not available")
+            return None
+            
+        temp_path = None
         try:
+            # Ensure temp directory exists and is writable
+            temp_dir = tempfile.gettempdir()
+            print(f"Using temp directory: {temp_dir}")
+            
             # Create temporary file for audio
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-                temp_path = temp_file.name
-                
+            temp_fd, temp_path = tempfile.mkstemp(suffix=".wav", prefix="stt_", dir=temp_dir)
+            os.close(temp_fd)  # Close file descriptor, keep the path
+            
             # Save audio to temporary file
+            print(f"Saving audio to temporary file: {temp_path}")
             sf.write(temp_path, audio_data, self.sample_rate)
+            
+            # Verify file exists and check size
+            if not os.path.exists(temp_path):
+                print(f"❌ Temporary file not created: {temp_path}")
+                return None
+            
+            file_size = os.path.getsize(temp_path)
+            print(f"✅ Temporary file created successfully: {temp_path} (size: {file_size} bytes)")
+            
+            # Test file accessibility
+            try:
+                with open(temp_path, 'rb') as test_file:
+                    test_data = test_file.read(100)  # Read first 100 bytes
+                print(f"✅ File is readable: {len(test_data)} bytes read")
+            except Exception as read_error:
+                print(f"❌ File read test failed: {read_error}")
+                return None
             
             # Transcribe with Japanese language forced
             print("Transcribing audio to Japanese...")
-            result = self.model.transcribe(
-                temp_path,
-                language=Config.WHISPER_LANGUAGE,
-                task="transcribe"
-            )
             
-            # Clean up temporary file
-            os.unlink(temp_path)
+            # Convert path to absolute path and normalize for Windows
+            abs_path = os.path.abspath(temp_path)
+            print(f"Using absolute path for transcription: {abs_path}")
+            
+            result = self.model.transcribe(
+                abs_path,
+                language=Config.WHISPER_LANGUAGE,
+                task="transcribe",
+                fp16=False  # Disable FP16 to avoid warnings
+            )
             
             transcribed_text = result["text"].strip()
             print(f"Transcribed: {transcribed_text}")
@@ -114,6 +145,14 @@ class SpeechToText:
         except Exception as e:
             print(f"Error during transcription: {e}")
             return None
+        finally:
+            # Clean up temporary file
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                    print(f"Cleaned up temporary file: {temp_path}")
+                except Exception as cleanup_error:
+                    print(f"Warning: Could not delete temporary file: {cleanup_error}")
     
     def transcribe_file(self, audio_file_path: str) -> Optional[str]:
         """

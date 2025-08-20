@@ -1,8 +1,25 @@
-import streamlit as st
+# -*- coding: utf-8 -*-
 import os
 import sys
+
+# Set UTF-8 environment variables first
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['LANG'] = 'en_US.UTF-8'
+os.environ['LC_ALL'] = 'en_US.UTF-8'
+
+import streamlit as st
 import time
 from datetime import datetime
+
+# Set UTF-8 encoding for Windows
+import locale
+try:
+    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+except:
+    try:
+        locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+    except:
+        pass  # Use system default
 
 # Add components to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'components'))

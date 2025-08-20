@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
 # Configuration
 import os
 from typing import Dict, Any
+
+# Set UTF-8 environment
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 class Config:
     """Configuration for Super Kamen Bot - Japanese Conversational AI"""
@@ -13,7 +17,7 @@ class Config:
     WHISPER_LANGUAGE = "ja"  # Force Japanese
     
     # Ollama LLM settings
-    LLM_MODEL = "elyza/llama2-7b-chat"  # Japanese-optimized model
+    LLM_MODEL = "kangyufei/llama2:japanese"  # Japanese-optimized model
     LLM_TEMPERATURE = 0.7
     LLM_MAX_TOKENS = 512
     
@@ -33,9 +37,9 @@ class Config:
     
     # Japanese conversation prompts
     SYSTEM_PROMPT = """あなたは親切で知識豊富な日本語のアシスタントです。
-日本語で自然な会話をしてください。
-ユーザーの質問に対して、丁寧で分かりやすい日本語で答えてください。
-日本の文化や習慣についても詳しく説明できます。"""
+常に自然で丁寧な日本語で回答してください。
+日本の文化、習慣、言語について詳しく説明できます。
+ユーザーとの会話を楽しく、教育的にしてください。"""
     
     @classmethod
     def get_ollama_config(cls) -> Dict[str, Any]:
