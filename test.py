@@ -19,9 +19,30 @@ def test_ollama_connection():
         print(f"Response: {response['message']['content']}")
         
         # Test Japanese model availability
-        models = ollama.list()
-        available_models = [model['name'] for model in models.get('models', [])]
-        print(f"Available models: {available_models}")
+        try:
+            models = ollama.list()
+            available_models = []
+            
+            # Handle different response formats
+            if hasattr(models, 'models'):
+                # New ollama version with object response
+                for model in models.models:
+                    if hasattr(model, 'name'):
+                        available_models.append(model.name)
+                    elif hasattr(model, 'model'):
+                        available_models.append(model.model)
+            elif isinstance(models, dict) and 'models' in models:
+                # Dictionary response format
+                for model in models['models']:
+                    if isinstance(model, dict) and 'name' in model:
+                        available_models.append(model['name'])
+                    elif isinstance(model, dict) and 'model' in model:
+                        available_models.append(model['model'])
+            
+            print(f"Available models: {available_models}")
+        except Exception as model_error:
+            print(f"⚠️ Could not list models: {model_error}")
+            available_models = ["llama2:7b-chat"]  # Assume basic model
         
         # Check for Japanese optimized model
         target_model = "elyza/llama2-7b-chat"

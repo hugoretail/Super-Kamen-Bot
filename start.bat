@@ -28,10 +28,12 @@ if errorlevel 1 (
 REM Check if requirements are installed
 python -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
-    echo Installing requirements...
-    python -m pip install -r requirements.txt
+    echo Installing essential requirements...
+    python -m pip install -r requirements-minimal.txt
     if errorlevel 1 (
-        echo Error: Failed to install requirements
+        echo Error: Failed to install essential requirements
+        echo.
+        echo Try running: install-essential.bat
         pause
         exit /b 1
     )

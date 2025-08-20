@@ -1,12 +1,31 @@
 # STT
 # Whisper
-import whisper
-import sounddevice as sd
-import soundfile as sf
-import numpy as np
 import tempfile
 import os
 from typing import Optional
+import numpy as np
+
+# Try to import audio and whisper packages
+try:
+    import whisper
+    WHISPER_AVAILABLE = True
+except ImportError:
+    print("⚠️ Whisper not available. Speech-to-text will be disabled.")
+    print("💡 Install with: pip install openai-whisper")
+    WHISPER_AVAILABLE = False
+    whisper = None
+
+try:
+    import sounddevice as sd
+    import soundfile as sf
+    AUDIO_AVAILABLE = True
+except ImportError:
+    print("⚠️ Audio packages not available. Voice recording will be disabled.")
+    print("💡 Install with: pip install sounddevice soundfile")
+    AUDIO_AVAILABLE = False
+    sd = None
+    sf = None
+
 from config import Config
 
 class SpeechToText:
@@ -14,12 +33,23 @@ class SpeechToText:
     
     def __init__(self):
         """Initialize Whisper model"""
-        print("Loading Whisper model...")
-        self.model = whisper.load_model(Config.WHISPER_MODEL)
+        self.model = None
         self.sample_rate = Config.SAMPLE_RATE
-        print(f"Whisper model '{Config.WHISPER_MODEL}' loaded successfully")
+        self.available = False
+        
+        if not WHISPER_AVAILABLE:
+            print("❌ Whisper not available")
+            return
+            
+        try:
+            print("Loading Whisper model...")
+            self.model = whisper.load_model(Config.WHISPER_MODEL)
+            self.available = True
+            print(f"Whisper model '{Config.WHISPER_MODEL}' loaded successfully")
+        except Exception as e:
+            print(f"❌ Failed to load Whisper model: {e}")
     
-    def record_audio(self, duration: int = 5) -> np.ndarray:
+    def record_audio(self, duration: int = 5) -> Optional[np.ndarray]:
         """
         Record audio from microphone
         
@@ -27,18 +57,26 @@ class SpeechToText:
             duration: Recording duration in seconds
             
         Returns:
-            Audio data as numpy array
+            Audio data as numpy array or None if error
         """
-        print(f"Recording for {duration} seconds...")
-        audio_data = sd.rec(
-            int(duration * self.sample_rate),
-            samplerate=self.sample_rate,
-            channels=Config.CHANNELS,
-            dtype=np.float32
-        )
-        sd.wait()  # Wait for recording to complete
-        print("Recording completed")
-        return audio_data.flatten()
+        if not AUDIO_AVAILABLE:
+            print("❌ Audio recording not available")
+            return None
+            
+        try:
+            print(f"Recording for {duration} seconds...")
+            audio_data = sd.rec(
+                int(duration * self.sample_rate),
+                samplerate=self.sample_rate,
+                channels=Config.CHANNELS,
+                dtype=np.float32
+            )
+            sd.wait()  # Wait for recording to complete
+            print("Recording completed")
+            return audio_data.flatten()
+        except Exception as e:
+            print(f"❌ Recording error: {e}")
+            return None
     
     def transcribe_audio(self, audio_data: np.ndarray) -> Optional[str]:
         """

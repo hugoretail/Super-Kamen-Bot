@@ -3,9 +3,19 @@
 import os
 import tempfile
 from typing import Optional
-import sounddevice as sd
-import soundfile as sf
-from TTS.api import TTS
+
+# Try to import audio packages, handle gracefully if missing
+try:
+    import sounddevice as sd
+    import soundfile as sf
+    AUDIO_AVAILABLE = True
+except ImportError:
+    print("⚠️ Audio packages not available. Audio playback will be disabled.")
+    print("💡 Install with: pip install sounddevice soundfile")
+    AUDIO_AVAILABLE = False
+    sd = None
+    sf = None
+
 from config import Config
 
 class TextToSpeech:
@@ -13,25 +23,28 @@ class TextToSpeech:
     
     def __init__(self):
         """Initialize TTS model for Japanese"""
+        self.tts = None
+        self.tts_available = False
+        
         try:
             print("Loading Japanese TTS model...")
             # Initialize TTS with Japanese model
+            from TTS.api import TTS
             self.tts = TTS(model_name=Config.TTS_MODEL)
+            self.tts_available = True
             print(f"TTS model loaded: {Config.TTS_MODEL}")
             
-            # Ensure output directory exists
-            Config.ensure_directories()
+        except ImportError:
+            print("⚠️ TTS package not installed. Text-to-speech will be disabled.")
+            print("💡 Install with: pip install TTS")
             
         except Exception as e:
-            print(f"Error initializing TTS: {e}")
-            print("Falling back to available Japanese model...")
-            try:
-                # Fallback to any available Japanese model
-                self.tts = TTS(model_name="tts_models/ja/kokoro/tacotron2-DDC")
-                print("Fallback TTS model loaded successfully")
-            except Exception as fallback_error:
-                print(f"Fallback TTS initialization failed: {fallback_error}")
-                self.tts = None
+            print(f"⚠️ TTS initialization failed: {e}")
+            print("💡 Text-to-speech will be disabled.")
+            
+        finally:
+            # Ensure output directory exists
+            Config.ensure_directories()
     
     def text_to_speech_file(self, text: str, output_path: str = None) -> Optional[str]:
         """
@@ -105,6 +118,10 @@ class TextToSpeech:
         Returns:
             True if successful, False otherwise
         """
+        if not AUDIO_AVAILABLE:
+            print("⚠️ Audio playback not available")
+            return False
+            
         try:
             print(f"Playing audio: {audio_file_path}")
             
@@ -129,7 +146,14 @@ class TextToSpeech:
         Returns:
             List of available model names
         """
+        if not self.tts_available:
+            print("⚠️ TTS not available")
+            return []
+            
         try:
+            # Import TTS here to avoid import errors
+            from TTS.api import TTS
+            
             # Get all available models
             models = TTS.list_models()
             
@@ -150,4 +174,4 @@ class TextToSpeech:
         Returns:
             True if TTS is ready, False otherwise
         """
-        return self.tts is not None
+        return self.tts_available and self.tts is not None

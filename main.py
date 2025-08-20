@@ -23,27 +23,45 @@ class SuperKamenBot:
     def initialize_components(self):
         """Initialize all bot components"""
         try:
-            # Initialize components
+            # Initialize components with error handling
             if 'stt' not in st.session_state:
                 with st.spinner("音声認識モデルを読み込み中..."):
-                    st.session_state.stt = SpeechToText()
+                    try:
+                        st.session_state.stt = SpeechToText()
+                        if not st.session_state.stt.available:
+                            st.warning("音声認識が利用できません。テキストのみのモードで続行します。")
+                    except Exception as e:
+                        st.error(f"音声認識の初期化に失敗: {e}")
+                        st.session_state.stt = None
             
             if 'llm' not in st.session_state:
                 with st.spinner("言語モデルを読み込み中..."):
-                    st.session_state.llm = LLMHandler()
-                    # Ensure model is ready
-                    if not st.session_state.llm.ensure_model_ready():
-                        st.error("言語モデルの準備ができませんでした。Ollamaが実行されているか確認してください。")
+                    try:
+                        st.session_state.llm = LLMHandler()
+                        # Ensure model is ready
+                        if not st.session_state.llm.ensure_model_ready():
+                            st.error("言語モデルの準備ができませんでした。Ollamaが実行されているか確認してください。")
+                            st.stop()
+                    except Exception as e:
+                        st.error(f"言語モデルの初期化に失敗: {e}")
                         st.stop()
             
             if 'tts' not in st.session_state:
                 with st.spinner("音声合成モデルを読み込み中..."):
-                    st.session_state.tts = TextToSpeech()
-                    if not st.session_state.tts.is_available():
-                        st.warning("音声合成が利用できません。テキストのみのモードで続行します。")
+                    try:
+                        st.session_state.tts = TextToSpeech()
+                        if not st.session_state.tts.is_available():
+                            st.warning("音声合成が利用できません。テキストのみのモードで続行します。")
+                    except Exception as e:
+                        st.warning(f"音声合成の初期化に失敗: {e}")
+                        st.session_state.tts = None
             
             if 'memory' not in st.session_state:
-                st.session_state.memory = MemoryManager()
+                try:
+                    st.session_state.memory = MemoryManager()
+                except Exception as e:
+                    st.error(f"メモリマネージャーの初期化に失敗: {e}")
+                    st.stop()
             
             # Initialize session
             if 'current_session_id' not in st.session_state:
@@ -61,6 +79,10 @@ class SuperKamenBot:
     
     def process_voice_input(self, duration: int = 5):
         """Process voice input and generate response"""
+        if not st.session_state.stt or not st.session_state.stt.available:
+            st.error("音声認識が利用できません。テキスト入力をご利用ください。")
+            return
+            
         try:
             # Record and transcribe
             with st.spinner(f"{duration}秒間録音中..."):
@@ -72,42 +94,8 @@ class SuperKamenBot:
             
             st.success(f"認識されたテキスト: {user_text}")
             
-            # Generate response
-            with st.spinner("応答を生成中..."):
-                conversation_history = st.session_state.memory.get_conversation_history(
-                    st.session_state.current_session_id
-                )
-                
-                bot_response = st.session_state.llm.generate_response(
-                    user_text, 
-                    conversation_history
-                )
-            
-            if bot_response:
-                # Save to memory
-                st.session_state.memory.save_conversation(
-                    st.session_state.current_session_id,
-                    user_text,
-                    bot_response
-                )
-                
-                # Add to session conversation history
-                st.session_state.conversation_history.append({
-                    'user': user_text,
-                    'bot': bot_response,
-                    'timestamp': datetime.now()
-                })
-                
-                # Display response
-                st.write("**ボットの応答:**")
-                st.write(bot_response)
-                
-                # Generate speech
-                if st.session_state.tts.is_available():
-                    with st.spinner("音声を生成中..."):
-                        success = st.session_state.tts.text_to_speech_play(bot_response)
-                        if not success:
-                            st.warning("音声再生に失敗しました。")
+            # Generate response using the text processing method
+            self.process_text_input(user_text)
                 
         except Exception as e:
             st.error(f"音声処理エラー: {e}")
@@ -145,9 +133,11 @@ class SuperKamenBot:
                 })
                 
                 # Generate speech if available
-                if st.session_state.tts.is_available():
+                if st.session_state.tts and st.session_state.tts.is_available():
                     with st.spinner("音声を生成中..."):
-                        st.session_state.tts.text_to_speech_play(bot_response)
+                        success = st.session_state.tts.text_to_speech_play(bot_response)
+                        if not success:
+                            st.warning("音声再生に失敗しました。")
                 
         except Exception as e:
             st.error(f"テキスト処理エラー: {e}")
@@ -244,19 +234,22 @@ def main():
     with col1:
         st.header("💬 会話")
         
-        # Voice input section
-        st.subheader("🎤 音声入力")
-        
-        col_voice1, col_voice2 = st.columns([1, 1])
-        
-        with col_voice1:
-            duration = st.slider("録音時間 (秒)", min_value=3, max_value=10, value=5)
-        
-        with col_voice2:
-            if st.button("🎙️ 音声で話す", type="primary", use_container_width=True):
-                bot.process_voice_input(duration)
-        
-        st.divider()
+        # Voice input section (only show if STT is available)
+        if st.session_state.stt and st.session_state.stt.available:
+            st.subheader("🎤 音声入力")
+            
+            col_voice1, col_voice2 = st.columns([1, 1])
+            
+            with col_voice1:
+                duration = st.slider("録音時間 (秒)", min_value=3, max_value=10, value=5)
+            
+            with col_voice2:
+                if st.button("🎙️ 音声で話す", type="primary", use_container_width=True):
+                    bot.process_voice_input(duration)
+            
+            st.divider()
+        else:
+            st.info("💡 音声入力は利用できません。テキスト入力をご利用ください。")
         
         # Text input section
         st.subheader("⌨️ テキスト入力")
