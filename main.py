@@ -89,6 +89,9 @@ class SuperKamenBot:
             
             if 'audio_recording' not in st.session_state:
                 st.session_state.audio_recording = False
+            
+            if 'show_text_input' not in st.session_state:
+                st.session_state.show_text_input = False
                 
         except Exception as e:
             st.error(f"初期化エラー: {e}")
@@ -170,7 +173,7 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS
+    # Custom CSS - Instagram/Skype-style conversation
     st.markdown("""
     <style>
     .main-header {
@@ -182,18 +185,52 @@ def main():
         font-size: 3rem;
         font-weight: bold;
     }
-    .chat-message {
+    
+    /* Chat container like messaging apps */
+    .chat-container {
+        max-height: 400px;
+        overflow-y: auto;
         padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 10px;
+        background: #f8f9fa;
+        border-radius: 15px;
+        margin: 1rem 0;
+        border: 1px solid #e9ecef;
     }
+    
+    /* User messages - right aligned like you send */
     .user-message {
-        background-color: #E3F2FD;
-        border-left: 4px solid #2196F3;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        padding: 0.8rem 1.2rem;
+        border-radius: 18px 18px 5px 18px;
+        margin: 0.3rem 0 0.3rem auto;
+        max-width: 75%;
+        word-wrap: break-word;
+        text-align: left;
+        display: block;
+        float: right;
+        clear: both;
     }
+    
+    /* Bot messages - left aligned like you receive */
     .bot-message {
-        background-color: #F3E5F5;
-        border-left: 4px solid #9C27B0;
+        background: #e9ecef;
+        color: #333;
+        padding: 0.8rem 1.2rem;
+        border-radius: 18px 18px 18px 5px;
+        margin: 0.3rem auto 0.3rem 0;
+        max-width: 75%;
+        word-wrap: break-word;
+        border: 1px solid #dee2e6;
+        display: block;
+        float: left;
+        clear: both;
+    }
+    
+    .clearfix::after {
+        content: "";
+        display: table;
+        clear: both;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -245,71 +282,63 @@ def main():
                 st.success(f"セッション '{title}' を読み込みました")
                 st.rerun()
     
-    # Main content area
-    col1, col2 = st.columns([2, 1])
+    # Main content area - single column clean layout
     
-    with col1:
-        st.header("💬 会話")
-        
-        # Voice input section (only show if STT is available)
-        if st.session_state.stt and st.session_state.stt.available:
-            st.subheader("🎤 音声入力")
-            
-            col_voice1, col_voice2 = st.columns([1, 1])
-            
-            with col_voice1:
-                duration = st.slider("録音時間 (秒)", min_value=3, max_value=10, value=5)
-            
-            with col_voice2:
-                if st.button("🎙️ 音声で話す", type="primary", use_container_width=True):
-                    bot.process_voice_input(duration)
-            
-            st.divider()
-        else:
-            st.info("💡 音声入力は利用できません。テキスト入力をご利用ください。")
-        
-        # Text input section
-        st.subheader("⌨️ テキスト入力")
-        
-        # Text input form
-        with st.form("text_input_form", clear_on_submit=True):
-            user_input = st.text_area(
-                "メッセージを入力してください:",
-                height=100,
-                placeholder="日本語でメッセージを入力してください..."
-            )
-            submit_button = st.form_submit_button("💬 送信", type="primary", use_container_width=True)
-            
-            if submit_button and user_input:
-                bot.process_text_input(user_input)
-                st.rerun()
+    # Voice input (prominent)
+    if st.session_state.stt and st.session_state.stt.available:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("� 音声で話す", type="primary", use_container_width=True):
+                bot.process_voice_input(5)
+    else:
+        st.info("💡 音声入力は利用できません。")
     
-    with col2:
-        st.header("📝 会話履歴")
-        
-        # Display conversation history
-        if st.session_state.conversation_history:
-            for i, exchange in enumerate(reversed(st.session_state.conversation_history[-10:])):
-                # User message
-                st.markdown(f"""
-                <div class="chat-message user-message">
-                    <strong>👤 あなた:</strong><br>
-                    {exchange['user']}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Bot message
-                st.markdown(f"""
-                <div class="chat-message bot-message">
-                    <strong>🤖 ボット:</strong><br>
-                    {exchange['bot']}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if i < len(st.session_state.conversation_history) - 1:
-                    st.markdown("---")
-        else:
-            st.info("まだ会話がありません。音声またはテキストで話しかけてください！")
+    # Text input toggle (small button)
+    col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 2])
+    with col3:
+        if st.button("💬", help="テキスト入力を表示/非表示"):
+            st.session_state.show_text_input = not st.session_state.show_text_input
+    
+    # Text input (hidden by default)
+    if st.session_state.show_text_input:
+        with st.form("text_form", clear_on_submit=True):
+            user_input = st.text_input("", placeholder="日本語でメッセージを入力してください...")
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                if st.form_submit_button("送信", use_container_width=True):
+                    if user_input:
+                        bot.process_text_input(user_input)
+                        st.rerun()
+    
+    # Chat history - Instagram/Skype style
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    
+    if st.session_state.conversation_history:
+        # Show messages in chronological order (oldest to newest like real chat)
+        for exchange in st.session_state.conversation_history[-10:]:  # Last 10 messages
+            # User message (right side like you send)
+            st.markdown(f"""
+            <div class="user-message">
+                {exchange['user']}
+            </div>
+            <div class="clearfix"></div>
+            """, unsafe_allow_html=True)
+            
+            # Bot message (left side like you receive)
+            st.markdown(f"""
+            <div class="bot-message">
+                {exchange['bot']}
+            </div>
+            <div class="clearfix"></div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="text-align: center; color: #888; padding: 2rem;">
+            <p>🎯 音声ボタンを押して会話を始めましょう！</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Footer
     st.markdown("---")
